@@ -1,0 +1,35 @@
+name: "Dependabot automerge"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+    branches:
+      - 'develop'
+
+permissions: write-all
+
+jobs:
+  review-dependabot-pr:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    steps:
+      - name: Dependabot metadata
+        id: dependabot-metadata
+        uses: dependabot/fetch-metadata@v1.3.1
+        with:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+      - name: Approve patch and minor updates
+        if: ${{(steps.dependabot-metadata.outputs.update-type == 'version-update:semver-patch' || steps.dependabot-metadata.outputs.update-type == 'version-update:semver-minor') && !contains(steps.dependabot-metadata.outputs.dependency-names, '@lego')}}
+        run: gh pr review $PR_URL --approve
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      - name: Enable auto-merge for Dependabot PRs
+        if: ${{(steps.dependabot-metadata.outputs.update-type == 'version-update:semver-patch' || steps.dependabot-metadata.outputs.update-type == 'version-update:semver-minor') && !contains(steps.dependabot-metadata.outputs.dependency-names, '@lego')}}
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
